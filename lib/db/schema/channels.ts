@@ -14,6 +14,11 @@ export const channels = sqliteTable("channels", {
   agentId: text("agent_id"),
   botToken: text("bot_token"),
   chatId: text("chat_id"),
+  // 企业微信域名验证
+  wecomVerifyFilename: text("wecom_verify_filename"),
+  wecomVerifyContent: text("wecom_verify_content"),
+  // SOCKS5 代理配置 (格式: socks5://user:pass@host:port 或 socks5://host:port)
+  socks5Proxy: text("socks5_proxy"),
   status: text("status", { enum: ["active", "inactive"] }).notNull().default("active"),
   userId: text("user_id").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -32,6 +37,9 @@ export const insertChannelSchema = createInsertSchema(channels).extend({
   id: z.string().optional(),
   botToken: z.string().optional(),
   chatId: z.string().optional(),
+  wecomVerifyFilename: z.string().optional(),
+  wecomVerifyContent: z.string().optional(),
+  socks5Proxy: z.string().optional(),
 }).refine((data) => {
   if (data.type === CHANNEL_TYPES.WECOM_APP) {
     return !!data.corpId
