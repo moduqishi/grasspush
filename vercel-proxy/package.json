@@ -2,7 +2,7 @@
     "name": "grasspush-relay",
     "version": "1.0.0",
     "dependencies": {
-        "https-proxy-agent": "^7.0.0",
-        "node-fetch": "^3.3.0"
+        "https-proxy-agent": "^5.0.1",
+        "node-fetch": "^2.6.7"
     }
 }

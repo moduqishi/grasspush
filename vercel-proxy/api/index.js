@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 const { HttpsProxyAgent } = require('https-proxy-agent');
-const { HttpProxyAgent } = require('http-proxy-agent'); // 实际上 https-proxy-agent 通常也处理 http，但为了保险
+
 
 module.exports = async (req, res) => {
     // 仅允许 POST
