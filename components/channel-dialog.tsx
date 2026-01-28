@@ -62,6 +62,9 @@ export function ChannelDialog({ mode = "create", channel }: ChannelDialogProps) 
       agentId: channel?.agentId || "",
       botToken: channel?.botToken || "",
       chatId: channel?.chatId || "",
+      wecomVerifyFilename: channel?.wecomVerifyFilename || "",
+      wecomVerifyContent: channel?.wecomVerifyContent || "",
+      socks5Proxy: channel?.socks5Proxy || "",
     },
   })
 
@@ -83,7 +86,7 @@ export function ChannelDialog({ mode = "create", channel }: ChannelDialogProps) 
       console.error('Channel dialog error:', error)
       toast({
         variant: "destructive",
-        description: mode === "edit" ? "更新失败，请重试" : "创建失败，请重试" 
+        description: mode === "edit" ? "更新失败，请重试" : "创建失败，请重试"
       })
     } finally {
       setIsPending(false)
@@ -140,7 +143,7 @@ export function ChannelDialog({ mode = "create", channel }: ChannelDialogProps) 
                     类型
                     <span className="text-red-500 ml-1">*</span>
                   </FormLabel>
-                  <Select 
+                  <Select
                     onValueChange={(value) => {
                       field.onChange(value as keyof typeof CHANNEL_TYPES)
                       setSelectedType(value as any)
@@ -165,19 +168,19 @@ export function ChannelDialog({ mode = "create", channel }: ChannelDialogProps) 
                 </FormItem>
               )}
             />
-            
+
             {selectedType && (
-              <ChannelFormFields 
-                type={selectedType} 
-                form={form} 
+              <ChannelFormFields
+                type={selectedType}
+                form={form}
               />
             )}
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} type="button">
                 取消
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 disabled={isPending}
               >
