@@ -49,6 +49,7 @@ export async function POST(
         agentId: endpoint.channel.agentId,
         botToken: endpoint.channel.botToken,
         chatId: endpoint.channel.chatId,
+        socks5Proxy: endpoint.channel.socks5Proxy,
       }
     )
 
