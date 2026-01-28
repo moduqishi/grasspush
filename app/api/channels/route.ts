@@ -37,14 +37,7 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const json = await req.json() as {
-      name: string
-      type: string
-      webhook: string | null
-      secret: string | null
-      corpId: string | null
-      agentId: string | null
-    }
+    const json = await req.json() as Record<string, unknown>
 
     const body = insertChannelSchema.parse({
       ...json,

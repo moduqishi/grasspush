@@ -18,7 +18,7 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const json = await req.json() as { id: string, type: string, name: string, webhook: string | null, secret: string | null, createdAt: string, updatedAt: string }
+    const json = await req.json()
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, type, ...body } = insertChannelSchema.parse(json)

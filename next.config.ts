@@ -15,6 +15,15 @@ setupPlatform();
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // URL 重写：支持 /WW_verify_xxx.txt 格式（企业微信域名验证）
+  async rewrites() {
+    return [
+      {
+        source: '/WW_verify_:filename.txt',
+        destination: '/WW_verify_:filename',
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     // cloudflare:sockets 是 Cloudflare Workers 运行时模块，构建时需要标记为外部依赖
     if (isServer) {
