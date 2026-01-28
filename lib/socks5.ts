@@ -3,10 +3,6 @@
  * 使用 cloudflare:sockets 实现原生 TCP 连接和 SOCKS5 协议握手
  */
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - cloudflare:sockets 是 Cloudflare Workers 运行时模块
-import { connect } from "cloudflare:sockets"
-
 export interface Socks5Config {
     hostname: string
     port: number
@@ -95,6 +91,16 @@ export interface SocketLike {
 }
 
 /**
+ * 动态获取 cloudflare:sockets 的 connect 函数
+ * 使用动态导入避免构建时解析问题
+ */
+async function getConnect(): Promise<(address: { hostname: string; port: number }) => SocketLike> {
+    // 使用动态导入，这样构建时不会尝试解析 cloudflare:sockets
+    const sockets = await import(/* webpackIgnore: true */ "cloudflare:sockets")
+    return sockets.connect
+}
+
+/**
  * 建立 SOCKS5 代理连接
  * 完成 SOCKS5 握手后返回可用于数据传输的 socket
  */
@@ -103,6 +109,7 @@ export async function socks5Connect(
     targetHost: string,
     targetPort: number
 ): Promise<SocketLike> {
+    const connect = await getConnect()
     const socket = connect({ hostname: config.hostname, port: config.port })
     const writer = socket.writable.getWriter()
     const reader = socket.readable.getReader()
