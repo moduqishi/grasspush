@@ -1,6 +1,7 @@
 /**
  * SOCKS5 代理工具库
  * 使用 cloudflare:sockets 实现原生 TCP 连接和 SOCKS5 协议握手
+ * 支持 startTls 以在 SOCKS5 隧道上建立 HTTPS 连接
  */
 
 export interface Socks5Config {
@@ -84,40 +85,56 @@ export function parseSocks5Url(url: string): Socks5Config {
     return { hostname, port, username, password }
 }
 
+// Socket 接口定义
 export interface SocketLike {
     readable: ReadableStream<Uint8Array>
     writable: WritableStream<Uint8Array>
     close: () => void
+    startTls?: (options?: { servername?: string }) => SocketLike
+}
+
+// 动态导入类型
+interface CloudflareSockets {
+    connect: (
+        address: { hostname: string; port: number },
+        options?: { secureTransport?: "off" | "on" | "starttls" }
+    ) => SocketLike
 }
 
 /**
  * 动态获取 cloudflare:sockets 的 connect 函数
- * 使用动态导入避免构建时解析问题
  */
-async function getConnect(): Promise<(address: { hostname: string; port: number }) => SocketLike> {
-    // 使用动态导入，这样构建时不会尝试解析 cloudflare:sockets
-    const sockets = await import(/* webpackIgnore: true */ "cloudflare:sockets")
+async function getConnect(): Promise<CloudflareSockets["connect"]> {
+    const sockets = await import(/* webpackIgnore: true */ "cloudflare:sockets") as CloudflareSockets
     return sockets.connect
 }
 
 /**
- * 建立 SOCKS5 代理连接
- * 完成 SOCKS5 握手后返回可用于数据传输的 socket
+ * 建立 SOCKS5 代理连接并返回可用于 TLS 升级的 socket
  */
 export async function socks5Connect(
     config: Socks5Config,
     targetHost: string,
-    targetPort: number
+    targetPort: number,
+    options?: { enableTls?: boolean }
 ): Promise<SocketLike> {
     const connect = await getConnect()
-    const socket = connect({ hostname: config.hostname, port: config.port })
+
+    // 如果需要 TLS，使用 starttls 模式
+    const secureTransport = options?.enableTls ? "starttls" : "off"
+
+    console.log(`SOCKS5: 连接代理 ${config.hostname}:${config.port}, secureTransport: ${secureTransport}`)
+
+    const socket = connect(
+        { hostname: config.hostname, port: config.port },
+        { secureTransport }
+    )
+
     const writer = socket.writable.getWriter()
     const reader = socket.readable.getReader()
 
     try {
         // 1. 发送认证方法协商
-        // 0x05 = SOCKS5 版本
-        // 0x02 = 支持 2 种认证方法 (0x00 无认证, 0x02 用户名密码)
         const authMethods = config.username && config.password
             ? new Uint8Array([0x05, 0x02, 0x00, 0x02])
             : new Uint8Array([0x05, 0x01, 0x00])
@@ -138,7 +155,6 @@ export async function socks5Connect(
 
         // 3. 处理认证
         if (selectedMethod === 0x02) {
-            // 用户名密码认证
             if (!config.username || !config.password) {
                 throw new Error("SOCKS5 服务器要求认证但未提供凭据")
             }
@@ -146,9 +162,8 @@ export async function socks5Connect(
             const userBytes = new TextEncoder().encode(config.username)
             const passBytes = new TextEncoder().encode(config.password)
 
-            // 认证请求格式: [版本][用户名长度][用户名][密码长度][密码]
             const authPacket = new Uint8Array([
-                0x01, // 子协商版本
+                0x01,
                 userBytes.length,
                 ...userBytes,
                 passBytes.length,
@@ -163,8 +178,10 @@ export async function socks5Connect(
 
             const authResponse = new Uint8Array(response.value)
             if (authResponse[1] !== 0x00) {
-                throw new Error("SOCKS5 认证失败: 用户名或密码错误")
+                throw new Error("SOCKS5 认证失败")
             }
+
+            console.log("SOCKS5: 认证成功")
         } else if (selectedMethod === 0xFF) {
             throw new Error("SOCKS5 服务器拒绝所有认证方法")
         } else if (selectedMethod !== 0x00) {
@@ -173,13 +190,6 @@ export async function socks5Connect(
 
         // 4. 发送 CONNECT 请求
         const hostBytes = new TextEncoder().encode(targetHost)
-
-        // CONNECT 请求格式:
-        // [版本][命令][保留][地址类型][地址][端口]
-        // 0x05 = SOCKS5
-        // 0x01 = CONNECT
-        // 0x00 = 保留
-        // 0x03 = 域名类型
         const connectPacket = new Uint8Array([
             0x05, 0x01, 0x00,
             0x03, hostBytes.length,
@@ -215,13 +225,116 @@ export async function socks5Connect(
             throw new Error(`SOCKS5 连接失败: ${errorMessages[replyCode] || `错误码 ${replyCode}`}`)
         }
 
-        // 6. 握手完成，释放锁并返回 socket
+        console.log(`SOCKS5: 已连接到 ${targetHost}:${targetPort}`)
+
+        // 释放锁
         writer.releaseLock()
         reader.releaseLock()
 
+        // 6. 如果需要 TLS，执行 startTls 升级
+        if (options?.enableTls && socket.startTls) {
+            console.log(`SOCKS5: 升级到 TLS, servername: ${targetHost}`)
+            const tlsSocket = socket.startTls({ servername: targetHost })
+            return tlsSocket
+        }
+
         return socket
     } catch (error) {
-        // 清理资源
+        try { writer.releaseLock() } catch { /* ignore */ }
+        try { reader.releaseLock() } catch { /* ignore */ }
+        try { socket.close() } catch { /* ignore */ }
+        throw error
+    }
+}
+
+/**
+ * 通过 SOCKS5 代理发送 HTTPS 请求
+ */
+export async function fetchViaSocks5(
+    proxyUrl: string,
+    targetUrl: string,
+    options: {
+        method?: string
+        headers?: Record<string, string>
+        body?: string
+    } = {}
+): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
+    const config = parseSocks5Url(proxyUrl)
+    const url = new URL(targetUrl)
+
+    const targetPort = url.protocol === "https:" ? 443 : 80
+    const targetHost = url.hostname
+    const enableTls = url.protocol === "https:"
+
+    console.log(`fetchViaSocks5: ${options.method || "GET"} ${targetUrl}, TLS: ${enableTls}`)
+
+    // 建立 SOCKS5 连接并可能升级到 TLS
+    const socket = await socks5Connect(config, targetHost, targetPort, { enableTls })
+
+    const writer = socket.writable.getWriter()
+    const reader = socket.readable.getReader()
+
+    try {
+        // 构造 HTTP 请求
+        const method = options.method || "GET"
+        const path = url.pathname + url.search
+
+        let httpRequest = `${method} ${path} HTTP/1.1\r\n`
+        httpRequest += `Host: ${targetHost}\r\n`
+        httpRequest += `Connection: close\r\n`
+        httpRequest += `User-Agent: GrassPush/1.0\r\n`
+
+        if (options.headers) {
+            for (const [key, value] of Object.entries(options.headers)) {
+                httpRequest += `${key}: ${value}\r\n`
+            }
+        }
+
+        if (options.body) {
+            const bodyBytes = new TextEncoder().encode(options.body)
+            httpRequest += `Content-Length: ${bodyBytes.length}\r\n`
+        }
+
+        httpRequest += `\r\n`
+
+        if (options.body) {
+            httpRequest += options.body
+        }
+
+        console.log("发送 HTTP 请求...")
+        await writer.write(new TextEncoder().encode(httpRequest))
+
+        // 读取响应
+        let responseText = ""
+        const decoder = new TextDecoder()
+
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            responseText += decoder.decode(value, { stream: true })
+        }
+
+        console.log("收到响应:", responseText.slice(0, 200))
+
+        // 解析 HTTP 响应
+        const headerEnd = responseText.indexOf("\r\n\r\n")
+        const bodyPart = headerEnd !== -1 ? responseText.slice(headerEnd + 4) : responseText
+
+        const headerPart = headerEnd !== -1 ? responseText.slice(0, headerEnd) : ""
+        const statusLine = headerPart.split("\r\n")[0] || ""
+        const statusMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/)
+        const status = statusMatch ? parseInt(statusMatch[1], 10) : 200
+
+        writer.releaseLock()
+        reader.releaseLock()
+        socket.close()
+
+        return {
+            ok: status >= 200 && status < 300,
+            status,
+            json: async () => JSON.parse(bodyPart)
+        }
+    } catch (error) {
         try { writer.releaseLock() } catch { /* ignore */ }
         try { reader.releaseLock() } catch { /* ignore */ }
         try { socket.close() } catch { /* ignore */ }
