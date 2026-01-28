@@ -2,6 +2,7 @@ import { z } from "zod"
 
 export const authSchema = z.object({
   username: z.string()
+    .toLowerCase()
     .min(1, "用户名不能为空")
     .max(20, "用户名不能超过20个字符")
     .regex(/^[a-zA-Z0-9_-]+$/, "用户名只能包含字母、数字、下划线和横杠")
