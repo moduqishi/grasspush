@@ -112,8 +112,8 @@ export function WecomAppFields({ form }: WecomAppFieldsProps) {
       </div>
 
       {/* SOCKS5 代理配置 */}
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium mb-3 text-muted-foreground">SOCKS5 代理（可选）</h4>
+      <div className="space-y-4 border-t pt-4">
+        <h3 className="text-sm font-medium text-muted-foreground">HTTP 代理 (可选)</h3>
         <FormField
           control={form.control}
           name="socks5Proxy"
@@ -121,13 +121,11 @@ export function WecomAppFields({ form }: WecomAppFieldsProps) {
             <FormItem>
               <FormLabel>代理地址</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="socks5://user:pass@host:port 或 socks5://host:port"
-                  {...field}
-                />
+                <Input placeholder="http://user:pass@host:port 或 host:port" {...field} />
               </FormControl>
               <FormDescription>
-                配置后将通过代理发送请求，用于满足企业微信可信 IP 要求
+                配置后将通过 HTTP 代理发送请求，用于满足企业微信可信 IP 要求。
+                支持 CONNECT 隧道模式。
               </FormDescription>
               <FormMessage />
             </FormItem>

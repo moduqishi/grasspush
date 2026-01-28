@@ -1,5 +1,5 @@
 import { BaseChannel, ChannelConfig, SendMessageOptions } from "./base"
-import { fetchViaSocks5 } from "@/lib/socks5"
+import { fetchViaHttpProxy } from "@/lib/http-proxy"
 
 interface WecomAppMessage {
   msgtype: string
@@ -62,12 +62,13 @@ export class WecomAppChannel extends BaseChannel {
 
   /**
    * 发送消息到企业微信应用
-   * 如果配置了 socks5Proxy，则通过代理发送
+   * 如果配置了代理（socks5Proxy字段兼容HTTP代理），则通过代理发送
    */
   async sendMessage(
     message: WecomAppMessage,
     options: SendMessageOptions
   ): Promise<Response> {
+    // 复用 socks5Proxy 字段存储 HTTP 代理地址
     const { corpId, agentId, secret, socks5Proxy } = options
 
     if (!corpId || !agentId || !secret) {
@@ -86,15 +87,15 @@ export class WecomAppChannel extends BaseChannel {
     let tokenData: WecomTokenResponse
 
     if (socks5Proxy) {
-      // 通过 SOCKS5 代理获取 token
-      console.log('通过 SOCKS5 代理获取 access_token')
+      // 通过 HTTP 代理获取 token
+      console.log('通过 HTTP 代理获取 access_token')
       try {
-        const tokenResponse = await fetchViaSocks5(socks5Proxy, tokenUrl)
+        const tokenResponse = await fetchViaHttpProxy(socks5Proxy, tokenUrl)
         tokenData = await tokenResponse.json() as WecomTokenResponse
         console.log('Token response:', tokenData)
       } catch (error) {
-        console.error('SOCKS5 代理请求失败:', error)
-        throw new Error(`SOCKS5 代理请求失败: ${error}`)
+        console.error('代理请求失败:', error)
+        throw new Error(`代理请求失败: ${error}`)
       }
 
       if (tokenData.errcode !== 0 && !tokenData.access_token) {
@@ -121,10 +122,10 @@ export class WecomAppChannel extends BaseChannel {
     let sendData: WecomSendResponse
 
     if (socks5Proxy) {
-      // 通过 SOCKS5 代理发送消息
-      console.log('通过 SOCKS5 代理发送消息')
+      // 通过 HTTP 代理发送消息
+      console.log('通过 HTTP 代理发送消息')
       try {
-        const sendResponse = await fetchViaSocks5(socks5Proxy, sendUrl, {
+        const sendResponse = await fetchViaHttpProxy(socks5Proxy, sendUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -134,8 +135,8 @@ export class WecomAppChannel extends BaseChannel {
         sendData = await sendResponse.json() as WecomSendResponse
         console.log('Send response:', sendData)
       } catch (error) {
-        console.error('SOCKS5 代理发送失败:', error)
-        throw new Error(`SOCKS5 代理发送失败: ${error}`)
+        console.error('代理发送失败:', error)
+        throw new Error(`代理发送失败: ${error}`)
       }
     } else {
       // 直接发送
