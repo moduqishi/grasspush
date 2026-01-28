@@ -12,6 +12,8 @@ import { toast } from "@/components/ui/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2 } from "lucide-react"
 
+export const runtime = "edge"
+
 const profileSchema = z.object({
     name: z.string().min(1, "昵称不能为空").max(50),
     image: z.string().url("请输入有效的图片链接").optional().or(z.literal("")),
