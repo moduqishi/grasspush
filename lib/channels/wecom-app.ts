@@ -86,17 +86,47 @@ export class WecomAppChannel extends BaseChannel {
 
     let tokenData: WecomTokenResponse
 
+    // 真正的 HTTP 代理逻辑 (fetchViaHttpProxy) 或 Vercel Relay 逻辑
     if (socks5Proxy) {
-      // 通过 HTTP 代理获取 token
-      console.log('通过 HTTP 代理获取 access_token')
-      try {
-        const tokenResponse = await fetchViaHttpProxy(socks5Proxy, tokenUrl)
-        tokenData = await tokenResponse.json() as WecomTokenResponse
-        console.log('Token response:', tokenData)
-      } catch (error) {
-        console.error('代理请求失败:', error)
-        throw new Error(`代理请求失败: ${error}`)
+      // 检查是否是 Relay 模式 (relay://)
+      if (socks5Proxy.startsWith('relay://')) {
+        const relayUrl = socks5Proxy.replace('relay://', 'https://')
+        console.log('通过 Vercel Relay 发送消息:', relayUrl)
+
+        try {
+          const relayResponse = await fetch(relayUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetUrl: tokenUrl, // 这里其实是获取 token，下面还要发送消息
+              method: 'GET'
+              // proxyUrl: 如果不传，Vercel 侧会用 DEFAULT_PROXY_URL
+            })
+          })
+
+          if (!relayResponse.ok) {
+            const errText = await relayResponse.text()
+            throw new Error(`Relay 服务报错: ${relayResponse.status} ${errText}`)
+          }
+
+          tokenData = await relayResponse.json() as WecomTokenResponse
+        } catch (error) {
+          console.error('Relay 请求失败:', error)
+          throw new Error(`Relay 请求失败: ${error}`)
+        }
+      } else {
+        // 标准 HTTP 代理模式
+        console.log('通过 HTTP 代理获取 access_token')
+        try {
+          const tokenResponse = await fetchViaHttpProxy(socks5Proxy, tokenUrl)
+          tokenData = await tokenResponse.json() as WecomTokenResponse
+        } catch (error) {
+          console.error('代理请求失败:', error)
+          throw new Error(`代理请求失败: ${error}`)
+        }
       }
+
+      console.log('Token response:', tokenData)
 
       if (tokenData.errcode !== 0 && !tokenData.access_token) {
         throw new Error(`获取访问令牌失败: ${tokenData.errmsg || '未知错误'}`)
@@ -122,23 +152,52 @@ export class WecomAppChannel extends BaseChannel {
     let sendData: WecomSendResponse
 
     if (socks5Proxy) {
-      // 通过 HTTP 代理发送消息
-      console.log('通过 HTTP 代理发送消息')
-      try {
-        const sendResponse = await fetchViaHttpProxy(socks5Proxy, sendUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: messageBody,
-        })
-        sendData = await sendResponse.json() as WecomSendResponse
-        console.log('Send response:', sendData)
-      } catch (error) {
-        console.error('代理发送失败:', error)
-        throw new Error(`代理发送失败: ${error}`)
+      if (socks5Proxy.startsWith('relay://')) {
+        const relayUrl = socks5Proxy.replace('relay://', 'https://')
+        console.log('通过 Vercel Relay 发送消息')
+
+        try {
+          const relayResponse = await fetch(relayUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetUrl: sendUrl,
+              method: 'POST',
+              body: JSON.parse(messageBody), // Relay 期望 JSON body 对象
+              headers: { 'Content-Type': 'application/json' }
+            })
+          })
+
+          if (!relayResponse.ok) {
+            const errText = await relayResponse.text()
+            throw new Error(`Relay 服务报错: ${relayResponse.status} ${errText}`)
+          }
+
+          sendData = await relayResponse.json() as WecomSendResponse
+        } catch (error) {
+          console.error('Relay 发送失败:', error)
+          throw new Error(`Relay 发送失败: ${error}`)
+        }
+      } else {
+        // 通过 HTTP 代理发送消息
+        console.log('通过 HTTP 代理发送消息')
+        try {
+          const sendResponse = await fetchViaHttpProxy(socks5Proxy, sendUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: messageBody,
+          })
+          sendData = await sendResponse.json() as WecomSendResponse
+          console.log('Send response:', sendData)
+        } catch (error) {
+          console.error('代理发送失败:', error)
+          throw new Error(`代理发送失败: ${error}`)
+        }
       }
     } else {
+
       // 直接发送
       const response = await fetch(sendUrl, {
         method: 'POST',
