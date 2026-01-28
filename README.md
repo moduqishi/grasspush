@@ -37,6 +37,14 @@
 - Bark App
 - 通用 Webhook
 
+# Grasspush
+
+Deploy a push notification service with Cloudflare, Drizzle and NextAuth.
+
+## Deploy
+
+[Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/?url=https://github.com/moduqishi/grasspush)
+
 ## 技术栈
 - **框架**: [Next.js](https://nextjs.org/) (App Router)
 - **平台**: [Cloudflare Pages](https://pages.cloudflare.com/)

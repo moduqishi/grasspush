@@ -1,5 +1,5 @@
 {
-  "name": "moepush",
+  "name": "grasspush",
   "version": "0.2.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "pages:build": "pnpm next-on-pages",
     "preview": "pnpm pages:build && wrangler pages dev",
     "deploy": "pnpm pages:build && wrangler pages deploy --branch main",
-    "db:migrate-local": "pnpm drizzle-kit generate && pnpm wrangler d1 migrations apply moepush --local",
+    "db:migrate-local": "pnpm drizzle-kit generate && pnpm wrangler d1 migrations apply grasspush --local",
     "tunnel": "pnpm dlx cloudflared tunnel --url http://localhost:3000"
   },
   "dependencies": {

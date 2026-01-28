@@ -40,7 +40,7 @@ export default async function Home() {
                 </Button>
               </Link>
             </div>
-            
+
             {/* 添加可爱的装饰图案 */}
             <div className="absolute top-1/2 -translate-y-1/2 left-0 w-64 h-64 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full filter blur-3xl opacity-20 animate-blob" />
             <div className="absolute top-1/2 -translate-y-1/2 right-0 w-64 h-64 bg-gradient-to-r from-indigo-300 to-blue-300 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
@@ -81,7 +81,7 @@ export default async function Home() {
                 description: "基础功能完全免费使用，代码开源，欢迎贡献"
               }
             ].map((feature, i) => (
-              <div 
+              <div
                 key={i}
                 className="group relative overflow-hidden rounded-2xl border border-blue-100 bg-white/50 p-8 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300"
               >
@@ -113,7 +113,7 @@ export default async function Home() {
               只需简单几步，即可开始使用推送服务
             </p>
           </div>
-          
+
           <div className="mx-auto grid justify-center gap-6 sm:grid-cols-1 md:max-w-[64rem] md:grid-cols-3">
             {[
               {
@@ -157,6 +157,12 @@ export default async function Home() {
 
       <footer className="border-t border-blue-100 bg-white">
         <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="text-4xl font-bold">Grasspush</h1>
+            <p className="text-lg text-muted-foreground">
+              Deploy a push notification service with Cloudflare, Drizzle and NextAuth.
+            </p>
+          </div>
           <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
             <Heart className="h-6 w-6 text-blue-500 animate-pulse" />
             <p className="text-center text-sm text-gray-600 md:text-left">

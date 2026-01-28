@@ -2,10 +2,10 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const dbName = process.env.D1_DATABASE_NAME || 'moepush-db';
+const dbName = process.env.D1_DATABASE_NAME || 'grasspush-db';
 const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-const projectName = process.env.PROJECT_NAME || 'moepush';
+const projectName = process.env.PROJECT_NAME || 'grasspush';
 
 const setupWranglerConfig = () => {
     const wranglerExamplePath = path.resolve('wrangler.example.json');

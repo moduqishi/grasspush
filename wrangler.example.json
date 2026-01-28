@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "moepush",
+  "name": "grasspush",
   "compatibility_date": "2025-02-04",
   "compatibility_flags": [
     "nodejs_compat"
@@ -12,7 +12,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "moepush",
+      "database_name": "grasspush",
       "database_id": "${D1_DATABASE_ID}",
       "migrations_dir": "./drizzle"
     }
