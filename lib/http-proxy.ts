@@ -80,9 +80,9 @@ export async function httpProxyConnect(
 
     const socket = connect(
         { hostname: proxyConfig.hostname, port: proxyConfig.port },
-        // 尝试使用 'off' 模式，因为某些情况下 'starttls' 模式会导致握手失败
-        // 虽然文档建议 'starttls'，但在代理 CONNECT 场景下，我们需要先处理明文 HTTP 响应
-        { secureTransport: "off" }
+        // 文档要求使用 startTls 方法必须设置 secureTransport 为 starttls
+        // 之前尝试 off 失败，现在改回 starttls，并依赖详细日志定位真正的握手问题
+        { secureTransport: "starttls" }
     )
 
     const writer = socket.writable.getWriter()
