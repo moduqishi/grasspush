@@ -1,5 +1,3 @@
-![GrassPush Banner](C:/Users/cake/.gemini/antigravity/brain/b0be1939-9029-4809-8bc0-d3f5e81258c8/grasspush_banner_1769576719504.png)
-
 <div align="center">
 
 # GrassPush Notification Gateway
