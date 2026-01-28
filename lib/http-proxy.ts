@@ -222,10 +222,12 @@ export async function fetchViaHttpProxy(
         const headerPart = fullResponse.slice(0, headerEndIndex)
         const bodyPart = fullResponse.slice(headerEndIndex + 4)
 
-        const [statusLine, ...headers] = headerPart.split("\r\n")
-        const [_, statusCode, ...statusTextParts] = statusLine.split(" ")
-        const status = parseInt(statusCode)
-        const statusText = statusTextParts.join(" ")
+        const headerLines = headerPart.split("\r\n")
+        const statusLine = headerLines[0]
+
+        const statusParts = statusLine.split(" ")
+        const status = parseInt(statusParts[1], 10)
+        const statusText = statusParts.slice(2).join(" ")
 
         return {
             ok: status >= 200 && status < 300,
