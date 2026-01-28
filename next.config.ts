@@ -15,7 +15,17 @@ setupPlatform();
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  webpack: (config, { isServer }) => {
+    // cloudflare:sockets 是 Cloudflare Workers 运行时模块，构建时需要标记为外部依赖
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'cloudflare:sockets': 'cloudflare:sockets',
+      });
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
+
