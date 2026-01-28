@@ -143,8 +143,8 @@ export async function httpProxyConnect(
         writer.releaseLock()
         reader.releaseLock()
 
-        // 给代理一点时间准备数据转发，防止 race condition
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // 给代理足够的时间准备数据转发，防止 race condition
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // 升级到 TLS
         // 检查 socket 是否有 startTls 方法 (类型定义有，但运行时需要确认)
@@ -152,11 +152,12 @@ export async function httpProxyConnect(
             console.log(`HTTP Proxy: 准备升级 TLS, servername: ${targetHost}`)
             try {
                 // 部分实现可能在显式传递 servername 时有 SNI 问题，或者证书验证过于严格
-                // 这里我们还是传递 servername，因为这是 TLS 的标准要求
-                const tlsSocket = socket.startTls({
+                const startTlsOptions = {
                     servername: targetHost,
-                    // 暂时不做 allowInsecure: true，除非确定证书有问题
-                })
+                    allowInsecure: true // 尝试忽略证书错误，排除中间人干扰因素
+                } as any
+
+                const tlsSocket = socket.startTls(startTlsOptions)
                 console.log(`HTTP Proxy: TLS 升级调用成功`)
                 return tlsSocket
             } catch (e: any) {
