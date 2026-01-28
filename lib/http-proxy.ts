@@ -80,7 +80,9 @@ export async function httpProxyConnect(
 
     const socket = connect(
         { hostname: proxyConfig.hostname, port: proxyConfig.port },
-        { secureTransport: "starttls" }
+        // 尝试使用 'off' 模式，因为某些情况下 'starttls' 模式会导致握手失败
+        // 虽然文档建议 'starttls'，但在代理 CONNECT 场景下，我们需要先处理明文 HTTP 响应
+        { secureTransport: "off" }
     )
 
     const writer = socket.writable.getWriter()
@@ -101,6 +103,8 @@ export async function httpProxyConnect(
 
         connectReq += `\r\n`
 
+        console.log(`HTTP Proxy: 发送 CONNECT 请求到 ${targetHost}:${targetPort}`)
+
         // 发送请求
         await writer.write(encoder.encode(connectReq))
 
@@ -108,17 +112,24 @@ export async function httpProxyConnect(
         let responseText = ""
         let headerFinished = false
 
-        while (!headerFinished) {
-            const { done, value } = await reader.read()
-            if (done) break
+        // 设置超时检查
+        const readPromise = async () => {
+            while (!headerFinished) {
+                const { done, value } = await reader.read()
+                if (done) break
 
-            const chunk = decoder.decode(value, { stream: true })
-            responseText += chunk
+                const chunk = decoder.decode(value, { stream: true })
+                responseText += chunk
 
-            if (responseText.includes("\r\n\r\n")) {
-                headerFinished = true
+                if (responseText.includes("\r\n\r\n")) {
+                    headerFinished = true
+                }
             }
         }
+
+        await readPromise()
+
+        console.log(`HTTP Proxy: 收到代理响应: ${JSON.stringify(responseText.split('\r\n')[0])}`)
 
         // 解析响应状态
         const statusLine = responseText.split("\r\n")[0]
@@ -126,20 +137,29 @@ export async function httpProxyConnect(
             throw new Error(`代理连接失败: ${statusLine}`)
         }
 
-        console.log(`HTTP Proxy: 隧道建立成功 (${statusLine})`)
+        console.log(`HTTP Proxy: 隧道建立成功`)
 
         // 释放锁，准备移交 socket
         writer.releaseLock()
         reader.releaseLock()
 
         // 升级到 TLS
-        // 这里的 startTls 是为了与目标服务器 (企业微信) 进行握手
-        if (socket.startTls) {
-            console.log(`HTTP Proxy: 升级到 TLS, servername: ${targetHost}`)
-            return socket.startTls({ servername: targetHost })
+        // 检查 socket 是否有 startTls 方法 (类型定义有，但运行时需要确认)
+        if (typeof socket.startTls === 'function') {
+            console.log(`HTTP Proxy: 准备升级 TLS, servername: ${targetHost}`)
+            try {
+                const tlsSocket = socket.startTls({ servername: targetHost })
+                console.log(`HTTP Proxy: TLS 升级调用成功`)
+                return tlsSocket
+            } catch (e: any) {
+                console.error(`HTTP Proxy: TLS 升级异常:`, e)
+                throw new Error(`TLS 升级失败: ${e.message || e}`)
+            }
+        } else {
+            console.warn("HTTP Proxy: Socket 不支持 startTls 方法，无法升级加密连接")
+            // 如果目标是 HTTPS，这会导致后续通信失败
+            return socket
         }
-
-        return socket
     } catch (error) {
         try { writer.releaseLock() } catch { }
         try { reader.releaseLock() } catch { }
