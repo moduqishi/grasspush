@@ -151,10 +151,10 @@ export async function httpProxyConnect(
         if (typeof socket.startTls === 'function') {
             console.log(`HTTP Proxy: 准备升级 TLS, servername: ${targetHost}`)
             try {
-                // 部分实现可能在显式传递 servername 时有 SNI 问题，或者证书验证过于严格
+                // 移除 servername，防止 Workers 内部 SNI 处理冲突，让服务器决定证书
+                // 这是一个实验性修复
                 const startTlsOptions = {
-                    servername: targetHost,
-                    allowInsecure: true // 尝试忽略证书错误，排除中间人干扰因素
+                    allowInsecure: true
                 } as any
 
                 const tlsSocket = socket.startTls(startTlsOptions)
