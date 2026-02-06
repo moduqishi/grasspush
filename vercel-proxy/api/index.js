@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { targetUrl, proxyUrl, method = 'GET', headers = {}, body } = req.body;
+        const { targetUrl, proxyUrl, method = 'GET', headers = {}, body, multipart } = req.body;
 
         if (!targetUrl) {
             return res.status(400).json({ error: 'Missing targetUrl' });
@@ -30,19 +30,46 @@ module.exports = async (req, res) => {
         // 发起请求
         const fetchOptions = {
             method,
-            headers: headers,
-            body: body ? JSON.stringify(body) : undefined,
+            headers: { ...headers },
+            body: undefined,
             agent: agent
         };
 
-        // 如果 body 是对象，stringify；如果是字符串，直接用
-        if (body && typeof body === 'object') {
+        // multipart 文件上传（用于企业微信 media/upload）
+        if (multipart && typeof multipart === 'object') {
+            const {
+                fieldName = 'media',
+                filename = 'upload.bin',
+                contentType = 'application/octet-stream',
+                contentBase64
+            } = multipart;
+
+            if (!contentBase64) {
+                return res.status(400).json({ error: 'multipart.contentBase64 is required' });
+            }
+
+            const boundary = `----GrassPushBoundary${Date.now().toString(16)}`;
+            const fileBuffer = Buffer.from(contentBase64, 'base64');
+            const headerBuffer = Buffer.from(
+                `--${boundary}\r\n` +
+                `Content-Disposition: form-data; name="${fieldName}"; filename="${filename}"\r\n` +
+                `Content-Type: ${contentType}\r\n\r\n`,
+                'utf8'
+            );
+            const footerBuffer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+            const multipartBody = Buffer.concat([headerBuffer, fileBuffer, footerBuffer]);
+
+            fetchOptions.body = multipartBody;
+            fetchOptions.headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+            fetchOptions.headers['Content-Length'] = String(multipartBody.length);
+        } else if (body && typeof body === 'object') {
+            // 如果 body 是对象，stringify
             fetchOptions.body = JSON.stringify(body);
-            // 确保 Content-Type
             if (!fetchOptions.headers['Content-Type']) {
                 fetchOptions.headers['Content-Type'] = 'application/json';
             }
         } else if (body) {
+            // 如果是字符串，直接用
             fetchOptions.body = body;
         }
 

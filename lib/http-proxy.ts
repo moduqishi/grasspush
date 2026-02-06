@@ -187,7 +187,7 @@ export async function fetchViaHttpProxy(
     options: {
         method?: string
         headers?: Record<string, string>
-        body?: string
+        body?: string | Uint8Array
     } = {}
 ): Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }> {
     const config = parseProxyUrl(proxyUrl)
@@ -221,18 +221,20 @@ export async function fetchViaHttpProxy(
             }
         }
 
-        if (options.body) {
-            const bodyBytes = encoder.encode(options.body)
+        const bodyBytes = options.body
+            ? (typeof options.body === "string" ? encoder.encode(options.body) : options.body)
+            : undefined
+
+        if (bodyBytes) {
             req += `Content-Length: ${bodyBytes.length}\r\n`
         }
 
         req += `\r\n`
 
-        if (options.body) {
-            req += options.body
-        }
-
         await writer.write(encoder.encode(req))
+        if (bodyBytes) {
+            await writer.write(bodyBytes)
+        }
 
         // 读取完整响应
         // 注意：对于大响应这可能有效率问题，但对于 API 调用通常没问题
