@@ -3,9 +3,11 @@ export interface TemplateField {
   description?: string
   placeholder?: string
   required?: boolean
-  component?: 'input' | 'textarea' | 'checkbox' | 'select' | 'hidden'
+  component?: 'input' | 'textarea' | 'checkbox' | 'select' | 'hidden' | 'wecom_media_upload'
   defaultValue?: string
   options?: Array<{value: string, label: string}>
+  mediaType?: 'image' | 'voice' | 'video' | 'file'
+  accept?: string
 }
 
 export interface MessageTemplate {
