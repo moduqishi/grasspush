@@ -58,6 +58,9 @@ const getInitialChannelType = (channels: Channel[], endpoint?: Endpoint) => {
 const getInitialTemplateType = (endpoint?: Endpoint) => {
   if (endpoint) {
     const rule = JSON.parse(endpoint.rule || "{}")
+    if (rule.msgtype === "template_card" && rule.template_card?.card_type) {
+      return `template_card.${rule.template_card.card_type}`
+    }
     return rule.msgtype || rule.parse_mode
   }
 }

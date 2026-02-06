@@ -120,8 +120,19 @@ export function TemplateFields({ form, template }: TemplateFieldsProps) {
     if (prevType !== template.type) {
       const newFieldValues: Record<string, any> = {}
       template.fields.forEach(field => {
+        // 隐藏字段一般用于协议关键字段（如 msgtype），切换模板时必须重置为当前模板默认值
+        if (field.component === 'hidden' && field.defaultValue !== undefined) {
+          newFieldValues[field.key] = field.defaultValue
+          return
+        }
+
         if (fieldValues[field.key] !== undefined) {
           newFieldValues[field.key] = fieldValues[field.key]
+          return
+        }
+
+        if (field.defaultValue !== undefined) {
+          newFieldValues[field.key] = field.defaultValue
         }
       })
       setFieldValues(newFieldValues)

@@ -4,8 +4,8 @@ interface WecomMessage {
   msgtype: "text" | "markdown"
   text?: {
     content: string
-    mentioned_list?: string[]
-    mentioned_mobile_list?: string[]
+    mentioned_list?: string[] | string
+    mentioned_mobile_list?: string[] | string
   }
   markdown?: {
     content: string
@@ -68,6 +68,21 @@ export class WecomChannel extends BaseChannel {
       throw new Error("缺少 Webhook 地址")
     }
     
+    if (message.msgtype === "text" && message.text) {
+      if (typeof message.text.mentioned_list === "string") {
+        message.text.mentioned_list = message.text.mentioned_list
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      }
+      if (typeof message.text.mentioned_mobile_list === "string") {
+        message.text.mentioned_mobile_list = message.text.mentioned_mobile_list
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      }
+    }
+
     console.log('sendWecomMessage message:', message)
 
     const response = await fetch(webhook, {
@@ -78,11 +93,14 @@ export class WecomChannel extends BaseChannel {
       body: JSON.stringify(message),
     })
 
-    if (!response.ok) {
-      const data = await response.json() as { errmsg: string }
+    const data = await response.json() as { errcode?: number, errmsg: string }
+    if (!response.ok || data.errcode !== 0) {
       throw new Error(`企业微信机器人消息推送失败: ${data.errmsg}`)
     }
 
-    return response
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 } 
